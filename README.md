@@ -8,8 +8,9 @@
 Pegas una imagen, el plugin la envía al **proveedor de visión** que elijas —
 **Gemini** por defecto, o cualquier API compatible con OpenAI (OpenAI, Groq,
 OpenRouter, Ollama, LM Studio…) — y le pasa al modelo principal una descripción
-textual detallada antes de que llegue a la respuesta. Así un modelo text-only
-como `opencode/deepseek-v4-flash-free` puede "ver" la imagen.
+textual detallada antes de que llegue a la respuesta. Así **cualquier modelo
+text-only** (sin importar cuál) puede "ver" la imagen. Si el modelo ya soporta
+imágenes, el plugin no interviene.
 
 ```
 Usuario adjunta imagen
@@ -27,12 +28,13 @@ Proveedor de visión (gemini · openai · proveedor personalizado)
 [IMAGE 1 ANALYSIS] … [/IMAGE 1 ANALYSIS]
         │
         ▼
-DeepSeek V4 recibe solo texto y responde
+El modelo text-only recibe solo texto y responde
 ```
 
 **Lo esencial:**
 - ✅ **Multi-proveedor**: Gemini (por defecto), OpenAI-compatible genérico, o proveedores personalizados.
 - ✅ **Auto-redimensionado** de capturas grandes → análisis en segundos en vez de minutos.
+- ✅ **Solo actúa cuando hace falta**: si el modelo activo ya ve imágenes, el plugin se mantiene al margen (lo detecta de las capacidades del modelo en el catálogo de OpenCode).
 - ✅ **Sin hacks**: no modifica OpenCode, no usa proxy externo, no toca la conversación guardada y nunca rompe la petición (los errores del proveedor se convierten en avisos en el chat).
 
 ---
@@ -138,7 +140,7 @@ Si ves una respuesta con `"choices"`, la key es válida. ✅
 
 ### 3 · ¡A usarlo!
 
-1. Abre `opencode2` con un modelo sin visión, p. ej. `opencode/deepseek-v4-flash-free`.
+1. Abre `opencode2` y elige un modelo **sin visión** (text-only).
 2. **Adjunta una imagen** (arrastra el archivo o pega una captura).
 3. Pregunta, por ejemplo: *"¿Qué error aparece en esta captura?"*, *"Transcribe el texto de esta imagen"* o *"Explícame este diagrama"*.
 4. El modelo recibe la descripción del proveedor y responde.
@@ -295,7 +297,7 @@ El plugin nunca imprime las claves en logs.
 
 ### Streaming en modelos AI SDK (`aisdk:...`)
 
-En modelos text-only enrutados por AI SDK (p. ej. DeepSeek vía OpenCode), el
+En modelos text-only enrutados por AI SDK, el
 análisis fluye **en vivo** como `reasoning-*` en el panel de razonamiento
 mientras el proveedor trabaja. Cuando termina, la petición al modelo real se
 envía con los bloques de análisis (el modelo nunca recibe bytes de imagen).
@@ -354,4 +356,4 @@ MIT — ver [LICENSE](LICENSE).
 
 ¿Quieres probar más a fondo, reportar un bug o publicar una versión nueva?
 Todo lo relativo a tests, build, arquitectura y release está en
-[`CONTRIBUTING.md`](CONTRIBUTING.md).
+[`CONTRIBUTING.md`](https://github.com/killershadow336/opencode-vision-relay/blob/main/CONTRIBUTING.md).

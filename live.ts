@@ -220,8 +220,8 @@ async function* bidi(
 }
 
 /**
- * Wraps a LanguageModelV3 (AI SDK path — covers aisdk providers like
- * opencode/deepseek). While streaming, every image in the prompt is analyzed
+ * Wraps a LanguageModelV3 (AI SDK path — covers aisdk-routed text-only models).
+ * While streaming, every image in the prompt is analyzed
  * by the vision provider with the analysis emitted live as reasoning deltas; the actual
  * model request is sent afterwards with the images replaced by the analysis
  * text, so a text-only model never receives raw image bytes.
