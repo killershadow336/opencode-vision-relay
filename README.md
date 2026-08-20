@@ -1,14 +1,15 @@
 # opencode2-vision-relay
 
-> 💡 ¿Quieres empezar ya con Gemini? Sigue la [**Guía rápida paso a paso**](GUIA.md).
+[![npm version](https://img.shields.io/npm/v/opencode2-vision-relay)](https://www.npmjs.com/package/opencode2-vision-relay)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Plugin **nativo** de OpenCode V2 que da visión a modelos que solo aceptan texto.
+**Plugin nativo de OpenCode V2 que da visión a modelos que solo aceptan texto.**
 
-Cuando el usuario adjunta una imagen, el plugin la envía al **proveedor de visión**
-que elijas — **Gemini** por defecto, o cualquier API compatible con OpenAI
-(OpenAI, Groq, OpenRouter, Ollama, LM Studio…) — y reemplaza la imagen por una
-descripción textual detallada antes de que llegue al modelo principal. Así un
-modelo text-only como `opencode/deepseek-v4-flash-free` puede "ver" imágenes.
+Pegas una imagen, el plugin la envía al **proveedor de visión** que elijas —
+**Gemini** por defecto, o cualquier API compatible con OpenAI (OpenAI, Groq,
+OpenRouter, Ollama, LM Studio…) — y le pasa al modelo principal una descripción
+textual detallada antes de que llegue a la respuesta. Así un modelo text-only
+como `opencode/deepseek-v4-flash-free` puede "ver" la imagen.
 
 ```
 Usuario adjunta imagen
@@ -29,29 +30,28 @@ Proveedor de visión (gemini · openai · proveedor personalizado)
 DeepSeek V4 recibe solo texto y responde
 ```
 
-No modifica OpenCode, no usa proxy externo, y no toca la conversación guardada:
-solo transforma la petición saliente hacia el modelo.
+**Lo esencial:**
+- ✅ **Multi-proveedor**: Gemini (por defecto), OpenAI-compatible genérico, o proveedores personalizados.
+- ✅ **Auto-redimensionado** de capturas grandes → análisis en segundos en vez de minutos.
+- ✅ **Sin hacks**: no modifica OpenCode, no usa proxy externo, no toca la conversación guardada y nunca rompe la petición (los errores del proveedor se convierten en avisos en el chat).
 
 ---
 
 ## Requisitos
 
-- OpenCode V2 (`opencode2`). Desarrollado y probado con `0.0.0-next-17444`
-  (el paquete `@opencode-ai/plugin` debe coincidir con la versión del CLI).
-- Node.js ≥ 20 o Bun (para resolver dependencias del plugin).
-- Una API key del proveedor de visión elegido (Gemini, OpenAI, Groq, etc.).
+- OpenCode V2 (`opencode2`). Probado con `0.0.0-next-17444` — el paquete `@opencode-ai/plugin` debe coincidir con la versión de tu CLI.
+- Node.js ≥ 20 (solo para resolver dependencias del plugin).
+- Una API key del proveedor de visión elegido (Gemini tiene capa gratuita).
 
 ## Instalación
 
-Hay tres formas: **paquete npm** (publicado, recomendado), **GitHub** o **carpeta local**.
-
-### Desde npm (recomendado para usuarios)
+### Desde npm (recomendado)
 
 ```sh
 npm install -g opencode2-vision-relay
 ```
 
-Añade el paquete a tu `opencode.json`:
+Añade el paquete a tu `opencode.json` (global en `~/.config/opencode/opencode.json` o por proyecto):
 
 ```jsonc
 {
@@ -69,12 +69,12 @@ Añade el paquete a tu `opencode.json`:
 }
 ```
 
-### Desde la carpeta local (desarrollo / fork)
+### Desde una copia local (fork / desarrollo)
 
 ```sh
 git clone https://github.com/killershadow336/opencode-vision-relay.git
 cd opencode-vision-relay
-npm install        # o: bun install
+npm install
 npm run build      # genera dist/
 ```
 
@@ -82,24 +82,68 @@ npm run build      # genera dist/
 {
   "$schema": "https://opencode.ai/config.json",
   "plugins": [
-    {
-      "package": "./opencode-vision-relay/dist/index.js",
-      "options": { "provider": "gemini" }
-    }
+    { "package": "./opencode-vision-relay/dist/index.js", "options": {} }
   ]
 }
 ```
 
-> En dev también puedes apuntar a `index.ts` directamente (OpenCode carga TS
-> nativo); `dist/index.js` es el artefacto publicado.
+> En desarrollo también puedes apuntar a `index.ts` directamente (OpenCode carga
+> TypeScript nativo); `dist/index.js` es el artefacto publicado.
 
-Reinicia/relanza OpenCode y verifica que el plugin se cargó:
+**Verifica que cargó** (reinicia OpenCode antes):
 
 ```sh
 opencode2 api get /api/plugin
 ```
 
 Debe aparecer `opencode.vision-relay` en la lista.
+
+---
+
+## 🚀 Empezar con Gemini (5 minutos)
+
+### 1 · Consigue la API key (gratis)
+
+1. Entra a **https://aistudio.google.com/apikey** e inicia sesión con tu cuenta de Google.
+2. Pulsa **Create API key** → elige un proyecto (o crea uno).
+3. Copia la clave que empieza por **`AIza...`** y guárdala en un sitio seguro. **No la subas a ningún repo.**
+
+### 2 · Configura la key
+
+El plugin la busca en este orden: **variable de entorno** → **archivo de respaldo**. El archivo es el método estable: aunque el servicio de OpenCode se reinicie desde cualquier proceso (y aunque ese proceso no tenga tu variable), el plugin siempre encuentra la key.
+
+**Método recomendado — archivo:**
+```sh
+mkdir -p ~/.config/opencode
+printf '%s' 'AIza...tu-clave-real' > ~/.config/opencode/vision-relay.key
+```
+
+**Alternativa — variable de entorno:**
+```sh
+export GOOGLE_AI_STUDIO_API_KEY="AIza...tu-clave-real"
+```
+
+> En **Windows nativo** (PowerShell): `setx GOOGLE_AI_STUDIO_API_KEY "AIza..."`, y cierra/vuelve a abrir la terminal.
+
+**Comprueba que la key funciona:**
+```sh
+curl -s "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer TU_API_KEY" \
+  -d '{"model":"gemini-3.6-flash","messages":[{"role":"user","content":"di hola"}]}'
+```
+Si ves una respuesta con `"choices"`, la key es válida. ✅
+
+> Opcional: otro modelo de Gemini → `export VISION_MODEL="gemini-3.6-flash"` (por defecto ya es ese).
+
+### 3 · ¡A usarlo!
+
+1. Abre `opencode2` con un modelo sin visión, p. ej. `opencode/deepseek-v4-flash-free`.
+2. **Adjunta una imagen** (arrastra el archivo o pega una captura).
+3. Pregunta, por ejemplo: *"¿Qué error aparece en esta captura?"*, *"Transcribe el texto de esta imagen"* o *"Explícame este diagrama"*.
+4. El modelo recibe la descripción del proveedor y responde.
+
+> Con modelos que **ya** ven imágenes (p. ej. `opencode/mimo-v2.5-free`) el plugin se calla y no interviene.
 
 ---
 
@@ -118,10 +162,7 @@ El plugin distingue dos familias nativas y permite proveedores personalizados:
 ```jsonc
 {
   "plugins": [
-    {
-      "package": "opencode2-vision-relay",
-      "options": {}
-    }
+    { "package": "opencode2-vision-relay", "options": {} }
   ]
 }
 ```
@@ -194,27 +235,20 @@ Key: `OPENAI_API_KEY` (env) o `~/.config/opencode/openai.key`.
 > `endpoint` completo, el `model` que quieras y opcionalmente dónde leer la key.
 > También puedes sobrescribir un built-in: `providers: { gemini: { model: "…" } }`.
 
+---
+
 ## Variables de entorno y archivo de key
 
-El plugin resuelve la API key **en cada envío**, en este orden: env var →
-archivo de respaldo. El mecanismo de archivo es **estable**: aunque el servicio
-de OpenCode se reinicie desde cualquier proceso sin tu env var, el plugin relee
-el archivo y la key siempre está disponible.
+El plugin resuelve la API key **en cada envío**: env var → archivo de respaldo.
+El archivo hace el sistema estable ante reinicios del servicio.
 
-**Gemini** (default):
+**Gemini** (default): `GOOGLE_AI_STUDIO_API_KEY` o `~/.config/opencode/vision-relay.key`
+**OpenAI genérico**: `OPENAI_API_KEY` o `~/.config/opencode/openai.key`
+**Proveedores personalizados**: la `apiKeyEnv`/`apiKeyFile` que definas.
 
-```sh
-# Método recomendado — archivo (persiste a reinicios del servicio):
-mkdir -p ~/.config/opencode
-printf '%s' 'tu_api_key_de_google_ai_studio' > ~/.config/opencode/vision-relay.key
+El plugin nunca imprime las claves en logs.
 
-# Alternativa — variable de entorno:
-export GOOGLE_AI_STUDIO_API_KEY="tu_api_key_de_google_ai_studio"
-export VISION_MODEL="gemini-3.6-flash"   # opcional, por defecto gemini-3.6-flash
-```
-
-**OpenAI genérico**: `OPENAI_API_KEY` o `~/.config/opencode/openai.key`.
-Proveedores personalizados: la `apiKeyEnv`/`apiKeyFile` que definas.
+---
 
 ## Configuración (opciones)
 
@@ -227,7 +261,7 @@ Proveedores personalizados: la `apiKeyEnv`/`apiKeyFile` que definas.
 | `endpoint` | por proveedor | Sobrescribe el endpoint OpenAI-compatible completo. |
 | `apiKeyEnv` | por proveedor | Sobrescribe la variable de entorno de la key. |
 | `apiKeyFile` | por proveedor | Sobrescribe el archivo de respaldo de la key. |
-| `timeoutMs` | `190000` | Timeout por imagen (mín. 1000). Solo aplica al análisis de cada imagen; el stream del modelo no se corta por este valor. |
+| `timeoutMs` | `190000` | Timeout por imagen (mín. 1000). Solo acota el análisis de cada imagen; el stream del modelo no se corta por este valor. |
 | `maxTokens` | `2048` | `max_tokens` de la respuesta (mín. 64). |
 | `maxImagesPerMessage` | `10` | Máx. imágenes analizadas por mensaje; el resto se marca como omitidas (mín. 1). |
 | `maxImageBytes` | `15728640` (15 MiB) | Máx. bytes decodificados por imagen; por encima se omite con aviso (mín. 1024). |
@@ -239,124 +273,62 @@ Proveedores personalizados: la `apiKeyEnv`/`apiKeyFile` que definas.
 | `cacheMaxEntries` | `256` | Entradas de la caché de análisis por sesión. |
 | `debug` | `false` | Logs de depuración (`[vision-relay]`). Nunca imprime claves. |
 
-## Comportamiento
+---
 
-1. **Solo actúa con imágenes**: si el mensaje no contiene ningún `media` part
-   de tipo `image/*`, no se hace ninguna llamada al proveedor de visión.
-2. **No interviene con modelos con visión**: consulta el catálogo
-   (`ctx.catalog.model.list()`) y si el modelo activo soporta `image` (o
-   `media`) en `capabilities.input`, deja pasar las imágenes sin tocar nada.
-3. **Modelos text-only**: cada imagen se envía al proveedor de visión (una
-   llamada por imagen) y se sustituye *in situ* por un bloque de texto:
+## Cómo se comporta
+
+1. **Solo actúa con imágenes**: sin `media` parts de tipo `image/*` no se llama al proveedor.
+2. **No interviene con modelos con visión**: si el modelo activo soporta `image`/`media` en sus capacidades, las imágenes pasan sin tocarlas.
+3. **Modelos text-only**: cada imagen se analiza (una llamada por imagen) y se reemplaza *in situ* por un bloque de texto:
    ```
    [IMAGE 1 ANALYSIS]
    <análisis estructurado>
    [/IMAGE 1 ANALYSIS]
    ```
-4. **Auto-redimensionado**: las imágenes PNG/JPEG más anchas que
-   `maxResizeWidth` (2000 px por defecto) se reducen antes de enviarlas —
-   una captura a pantalla completa baja de minutos a segundos de análisis con
-   calidad suficiente para leer texto/UI. Los demás formatos pasan intactos.
-4. **Se conserva el texto original** del usuario: solo se reemplazan las
-   partes `media`, nunca las partes de texto.
-5. **Múltiples imágenes**: se numeran en orden de aparición y cada una genera
-   su bloque independiente.
-6. **La conversación original no se modifica**: el hook muta únicamente la
-   petición saliente del modelo, no el historial guardado.
-7. **Caché por sesión**: la misma imagen en turnos posteriores se reutiliza sin
-   volver a llamar al proveedor.
-8. **Errores limpios**: si el proveedor falla, la imagen se sustituye por un
-   aviso `ERROR: …` visible para el modelo y el plugin **nunca lanza** hacia el
-   dispatcher (un hook que falla rompería la petición).
-9. **Límites**: número de imágenes por mensaje y tamaño por imagen son
-   configurables; las omitidas se notifican en texto.
-10. **Seguridad**: la API key solo se lee de `process.env`/archivo; los logs
-    redactan cuerpos de error y jamás incluyen claves.
+4. **Auto-redimensionado**: las imágenes PNG/JPEG más anchas que `maxResizeWidth` se reducen antes de enviarlas — una captura a pantalla completa se analiza en segundos con calidad suficiente para leer texto/UI. Otros formatos pasan intactos.
+5. **Se conserva el texto original** del usuario: solo se reemplazan las partes `media`, nunca las de texto.
+6. **Múltiples imágenes**: se numeran en orden de aparición y cada una genera su bloque independiente.
+7. **La conversación guardada no se modifica**: la transformación ocurre solo sobre la petición saliente hacia el modelo.
+8. **Caché por sesión**: la misma imagen en turnos posteriores no se vuelve a enviar al proveedor.
+9. **Errores limpios**: si el proveedor falla, la imagen se sustituye por un aviso `ERROR: …` visible para el modelo; el plugin nunca lanza hacia el dispatcher.
+10. **Seguridad**: la API key solo se lee de `process.env`/archivo; los logs redactan cuerpos de error y jamás incluyen claves.
 
 ### Streaming en modelos AI SDK (`aisdk:...`)
 
-En modelos text-only enrutados por AI SDK (p. ej. DeepSeek vía OpenCode),
-el plugin no espera en silencio a que el proveedor termine: el análisis fluye
-**en vivo** como `reasoning-*` parts en el panel de razonamiento mientras el
-proveedor trabaja. Una vez terminadas todas las imágenes, la petición al modelo
-real se envía con los bloques de análisis en lugar de las imágenes (el modelo
-nunca recibe bytes de imagen).
+En modelos text-only enrutados por AI SDK (p. ej. DeepSeek vía OpenCode), el
+análisis fluye **en vivo** como `reasoning-*` en el panel de razonamiento
+mientras el proveedor trabaja. Cuando termina, la petición al modelo real se
+envía con los bloques de análisis (el modelo nunca recibe bytes de imagen).
+El `timeoutMs` solo acota el análisis de cada imagen: el stream del modelo final
+no se interrumpe aunque el proveedor tarde más (a lo sumo esa imagen se marca
+con `ERROR: …` y el resto continúa).
 
-El `timeoutMs` solo acota el análisis de **cada imagen**. El stream del modelo
-final se reenvía sin cortes: aunque el proveedor tarde más, la respuesta
-ensamblada no se interrumpe; a lo sumo esa imagen se marca con `ERROR: …` y el
-resto continúa.
+---
 
-## Uso
+## Solución de problemas
 
-```sh
-# con el plugin activo y la API key del proveedor configurada
-opencode2
-```
+| Problema | Solución |
+| --- | --- |
+| `GOOGLE_AI_STUDIO_API_KEY is not set` | Ni la env var ni `~/.config/opencode/vision-relay.key` tienen la key. Usa el método de archivo (rápido y estable). |
+| El plugin vuelve a pedir la key tras reiniciar | El archivo de key se relee en cada envío; verifica que exista y contenga solo la clave. |
+| No aparece `opencode.vision-relay` en `/api/plugin` | `opencode2 service restart`; si sigue faltando, activa `debug: true` y revisa el log del servidor. |
+| `HTTP 429` del proveedor | Límite de peticiones. Espera unos segundos o baja `maxImagesPerMessage`. |
+| `HTTP 401` | La API key es inválida. Regenera la del proveedor (p. ej. en Google AI Studio). |
+| La imagen no se analiza | Comprueba formato (PNG/JPEG/GIF/WebP) y que no supere `maxImageBytes` (15 MiB por defecto). |
+| El análisis tarda demasiado | Bajadando `maxResizeWidth` (default 2000) reduces el envío; también baja `timeoutMs` si prefieres fallar rápido. |
 
-Adjunta una imagen (o varias) y escribe tu petición, por ejemplo:
+Para logs detallados: `{ "options": { "debug": true } }` muestra líneas
+`[vision-relay]` (proveedor, modelo, nº de imágenes, caché).
 
-> Mira esta captura, ¿qué error estoy viendo?
-
-El modelo recibirá el texto original más el análisis del proveedor y podrá
-razonar sobre la imagen.
-
-## Pruebas
-
-```sh
-npm test          # Vitest: 45 casos
-npm run typecheck # tsc --noEmit
-```
-
-Los casos cubren:
-- **A)** mensaje sin imagen → el proveedor no se llama
-- **B)** una imagen → el proveedor recibe la data URI, devuelve descripción, el
-  modelo recibe el bloque `[IMAGE 1 ANALYSIS]`
-- **C)** varias imágenes → todas procesadas, bloques numerados e independientes
-- **D)** error del proveedor → no rompe nada, se inserta aviso
-- **providers**: resolución de proveedores (gemini/openai/personalizados),
-  `baseUrl`→endpoint, overrides y fallback con warning
-- **resize**: redimensionado PNG/JPEG (tamaños, aspect ratio, passthrough de
-  formatos sin decodificador y de imágenes pequeñas, integración en relay)
-- además: límites de tamaño/cantidad, parseo de respuestas OpenAI-compatible,
-  normalización de data URIs y sustituciones por aviso.
-
-## Build & publicación
-
-```sh
-npm run build      # tsc → dist/ (JS + .d.ts + maps)
-npm pack           # genera el tarball publicable (prepack: build + test)
-npm publish        # requiere npm login y un paquete sin "private": true
-```
-
-El tarball incluye `dist/`, `README.md`, `GUIA.md` y `LICENSE`. La única
-dependencia runtime es `@opencode-ai/plugin` (los demás imports son tipos y se
-borran al compilar). **No subas dist/ al repo** (está en `.gitignore`); se
-genera en `prepack`/`prepublish`.
-
-## Debugging
-
-```jsonc
-{ "options": { "debug": true } }
-```
-
-Muestra logs `[vision-relay]` (proveedor, modelo, nº de imágenes, caché). Para
-ver el procesamiento del servidor en general:
-
-```sh
-opencode2 service status
-opencode2 api get /api/health
-```
-
-Si el plugin no aparece en `/api/plugin`, revisa el log del servidor
-(`~/.local/share/opencode/log/opencode.log`, filtrar `role=server`). Los
-módulos que fallan al cargar se registran sin romper el resto.
+---
 
 ## Desinstalación
 
-1. Quita la entrada del plugin de `opencode.json`.
+1. Quita la entrada del plugin de `opencode.json` (o la clave `plugins`).
 2. Opcional: `npm uninstall -g opencode2-vision-relay` o elimina la carpeta.
 3. Reinicia OpenCode. La lista `/api/plugin` deja de incluirlo.
+
+---
 
 ## Limitaciones
 
@@ -371,3 +343,15 @@ módulos que fallan al cargar se registran sin romper el resto.
 - El plugin procesa imágenes presentes en **cualquier** dispatch con el modelo
   activo (incluida la conversación previa si el modelo es text-only), siempre
   bajo los límites configurados.
+
+---
+
+## Licencia
+
+MIT — ver [LICENSE](LICENSE).
+
+## Desarrollo y contribución
+
+¿Quieres probar más a fondo, reportar un bug o publicar una versión nueva?
+Todo lo relativo a tests, build, arquitectura y release está en
+[`CONTRIBUTING.md`](CONTRIBUTING.md).
