@@ -1,4 +1,4 @@
-# opencode-vision-relay
+# opencode2-vision-relay
 
 > 💡 ¿Quieres empezar ya con Gemini? Sigue la [**Guía rápida paso a paso**](GUIA.md).
 
@@ -48,7 +48,7 @@ Hay tres formas: **paquete npm** (cuando esté publicado), **GitHub** o **carpet
 ### Desde npm (recomendado para usuarios)
 
 ```sh
-npm install -g opencode-vision-relay   # no publicado todavía — usa GitHub/local por ahora
+npm install -g opencode2-vision-relay   # no publicado todavía — usa GitHub/local por ahora
 ```
 
 Añade el paquete a tu `opencode.json`:
@@ -56,7 +56,7 @@ Añade el paquete a tu `opencode.json`:
 ```jsonc
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugins": ["opencode-vision-relay"]
+  "plugins": ["opencode2-vision-relay"]
 }
 ```
 
@@ -119,7 +119,7 @@ El plugin distingue dos familias nativas y permite proveedores personalizados:
 {
   "plugins": [
     {
-      "package": "opencode-vision-relay",
+      "package": "opencode2-vision-relay",
       "options": {}
     }
   ]
@@ -132,7 +132,7 @@ El plugin distingue dos familias nativas y permite proveedores personalizados:
 {
   "plugins": [
     {
-      "package": "opencode-vision-relay",
+      "package": "opencode2-vision-relay",
       "options": {
         "provider": "openai",
         "model": "gpt-4o"   // opcional; por defecto gpt-4o
@@ -150,7 +150,7 @@ Key: `OPENAI_API_KEY` (env) o `~/.config/opencode/openai.key`.
 {
   "plugins": [
     {
-      "package": "opencode-vision-relay",
+      "package": "opencode2-vision-relay",
       "options": {
         "provider": "ollama",
         "providers": {
@@ -172,7 +172,7 @@ Key: `OPENAI_API_KEY` (env) o `~/.config/opencode/openai.key`.
 {
   "plugins": [
     {
-      "package": "opencode-vision-relay",
+      "package": "opencode2-vision-relay",
       "options": {
         "provider": "groq",
         "providers": {
@@ -348,7 +348,7 @@ módulos que fallan al cargar se registran sin romper el resto.
 ## Desinstalación
 
 1. Quita la entrada del plugin de `opencode.json`.
-2. Opcional: `npm uninstall -g opencode-vision-relay` o elimina la carpeta.
+2. Opcional: `npm uninstall -g opencode2-vision-relay` o elimina la carpeta.
 3. Reinicia OpenCode. La lista `/api/plugin` deja de incluirlo.
 
 ## Limitaciones

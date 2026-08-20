@@ -1,8 +1,8 @@
 {
-  "name": "opencode-vision-relay",
+  "name": "opencode2-vision-relay",
   "version": "0.2.0",
   "type": "module",
-  "description": "Native OpenCode V2 plugin that gives text-only models vision: relays image parts to any OpenAI-compatible vision provider (Gemini, OpenAI, Groq, OpenRouter, Ollama...) and replaces them with detailed text analyses.",
+  "description": "OpenCode V2 (opencode2) plugin: gives text-only models vision by relaying image parts to any OpenAI-compatible vision provider (Gemini, OpenAI, Groq, OpenRouter, Ollama...) and replacing them with detailed text analyses.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -29,12 +29,14 @@
   },
   "keywords": [
     "opencode",
+    "opencode2",
     "plugin",
     "vision",
     "multimodal",
     "gemini",
     "openai",
-    "tts",
+    "groq",
+    "ollama",
     "text-only"
   ],
   "license": "MIT",
