@@ -50,6 +50,8 @@ export interface VisionRelayOptions {
   readonly maxImagesPerMessage: number
   /** Maximum decoded bytes per image. Larger images are skipped with a notice. Default: 15 MiB. */
   readonly maxImageBytes: number
+  /** Maximum image width (px) sent to the vision provider; wider PNG/JPEG images are downscaled before analysis (drastic latency/cost drop on big screenshots). Default: 2000. 0 disables. */
+  readonly maxResizeWidth: number
   /** Verbose logs (never logs secrets). Default: false. */
   readonly debug: boolean
   /** File where debug/error trace lines are appended when debug is enabled. Default: ~/.config/opencode/vision-relay.log */
@@ -129,6 +131,7 @@ export function resolveOptions(raw: PluginOptions, env: NodeJS.ProcessEnv): Visi
     maxTokens: num(raw.maxTokens, 2048, 64),
     maxImagesPerMessage: num(raw.maxImagesPerMessage, 10, 1),
     maxImageBytes: num(raw.maxImageBytes, 15 * 1024 * 1024, 1024),
+    maxResizeWidth: num(raw.maxResizeWidth, 2000, 0),
     debug: bool(raw.debug, false),
     debugLogFile: str(raw.debugLogFile, DEFAULT_DEBUG_LOG_FILE),
     skipModels: stringSet(raw.skipModels),

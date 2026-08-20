@@ -8,5 +8,5 @@
     "declarationMap": true,
     "sourceMap": true
   },
-  "include": ["index.ts", "options.ts", "images.ts", "openai.ts", "providers.ts", "relay.ts", "live.ts"]
+  "include": ["index.ts", "options.ts", "images.ts", "openai.ts", "providers.ts", "relay.ts", "live.ts", "resize.ts", "image-libs.d.ts"]
 }

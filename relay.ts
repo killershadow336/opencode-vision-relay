@@ -1,6 +1,7 @@
 import type { ContentPart } from "@opencode-ai/ai"
 import { collectImageParts, type CollectedImage } from "./images.js"
 import type { VisionRelayOptions } from "./options.js"
+import { maybeResizeImage } from "./resize.js"
 
 export interface RelayContext {
   readonly options: VisionRelayOptions
@@ -104,7 +105,13 @@ export async function relayImages(messages: { content: ContentPart[] }[], ctx: R
     }
 
     stats.analyzed++
-    const cacheKey = ctx.sessionID === undefined ? undefined : `${ctx.sessionID}:${hash(image.dataUri)}`
+
+    // Downscale big screenshots before analysis (latency + cost) and key the
+    // cache on the exact data used, so context-hook and aisdk paths agree.
+    const sourceUri = await maybeResizeImage(image.dataUri, options.maxResizeWidth)
+    const resized = sourceUri !== image.dataUri
+
+    const cacheKey = ctx.sessionID === undefined ? undefined : `${ctx.sessionID}:${hash(sourceUri)}`
     const cached = cacheKey === undefined ? undefined : ctx.cache?.get(cacheKey)
     if (cached !== undefined) {
       log("debug", `image ${index} served from cache`)
@@ -113,10 +120,10 @@ export async function relayImages(messages: { content: ContentPart[] }[], ctx: R
     }
 
     try {
-      const analysis = await analyze(image.dataUri)
+      const analysis = await analyze(sourceUri)
       if (cacheKey !== undefined && ctx.cacheSet !== undefined) ctx.cacheSet(cacheKey, analysis)
       replacements.set(image, buildAnalysisPart(index, analysis, description))
-      log("debug", `image ${index} analyzed (${image.byteSize} bytes)`)
+      log("debug", `image ${index} analyzed (${image.byteSize} bytes${resized ? ", downscaled" : ""})`)
     } catch (error) {
       stats.failed++
       log("error", `failed to analyze image ${index}: ${truncate(errorMessage(error), 200)}`)

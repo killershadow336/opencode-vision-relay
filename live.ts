@@ -13,6 +13,7 @@ import { streamImage, type FetchLike } from "./openai.js"
 import { isImageMime, byteSizeOf, uint8ToBase64 } from "./images.js"
 import { transportOptions, type ProviderSpec } from "./providers.js"
 import type { VisionRelayOptions } from "./options.js"
+import { maybeResizeImage } from "./resize.js"
 import { buildAnalysisPart } from "./relay.js"
 
 const TOO_LARGE_NOTICE =
@@ -173,7 +174,9 @@ async function* relayStream(
       continue
     }
 
-    const cached = cachedOf(deps, image.dataUri)
+    const sourceUri = await maybeResizeImage(image.dataUri, deps.options.maxResizeWidth)
+
+    const cached = cachedOf(deps, sourceUri)
     if (cached !== undefined) {
       analyses[i] = cached
       deps.log("debug", `image ${index} served from cache (streaming)`)
@@ -184,7 +187,7 @@ async function* relayStream(
     let body = ""
     try {
       const transport = transportOptions(deps.spec, apiKey, deps.options)
-      for await (const delta of streamImage(transport, image.dataUri, deps.fetchImpl)) {
+      for await (const delta of streamImage(transport, sourceUri, deps.fetchImpl)) {
         body += delta
         yield { type: "reasoning-delta", id: reasoningId, delta }
       }
@@ -193,7 +196,7 @@ async function* relayStream(
       body = `ERROR: No se pudo analizar esta imagen con el proveedor de visión (${errorMessage(error).slice(0, 300)}).`
     }
     analyses[i] = body
-    const key = cacheKeyOf(deps, image.dataUri)
+    const key = cacheKeyOf(deps, sourceUri)
     if (key !== undefined && deps.cacheSet !== undefined) deps.cacheSet(key, body)
     deps.log("debug", `image ${index} analyzed streaming (${image.byteSize} bytes)`)
   }
@@ -251,7 +254,8 @@ export function buildWrappedLanguage(original: LanguageModelV3, deps: LangDeps):
         analyses[i] = `ERROR: La variable ${deps.spec.apiKeyEnv} (o el archivo ${deps.spec.apiKeyFile}) no está definida, así que esta imagen no se pudo analizar con el proveedor de visión.`
         continue
       }
-      const cached = cachedOf(deps, image.dataUri)
+      const sourceUri = await maybeResizeImage(image.dataUri, deps.options.maxResizeWidth)
+      const cached = cachedOf(deps, sourceUri)
       if (cached !== undefined) {
         analyses[i] = cached
         deps.log("debug", `image ${index} served from cache (generate)`)
@@ -260,7 +264,7 @@ export function buildWrappedLanguage(original: LanguageModelV3, deps: LangDeps):
       let body = ""
       try {
         const transport = transportOptions(deps.spec, apiKey, deps.options)
-        for await (const delta of streamImage(transport, image.dataUri, deps.fetchImpl)) {
+        for await (const delta of streamImage(transport, sourceUri, deps.fetchImpl)) {
           body += delta
         }
         if (body.trim() === "") body = "ERROR: El proveedor de visión devolvió una respuesta vacía para esta imagen."
@@ -268,7 +272,7 @@ export function buildWrappedLanguage(original: LanguageModelV3, deps: LangDeps):
         body = `ERROR: No se pudo analizar esta imagen con el proveedor de visión (${errorMessage(error).slice(0, 300)}).`
       }
       analyses[i] = body
-      const key = cacheKeyOf(deps, image.dataUri)
+      const key = cacheKeyOf(deps, sourceUri)
       if (key !== undefined && deps.cacheSet !== undefined) deps.cacheSet(key, body)
       deps.log("debug", `image ${index} analyzed (${image.byteSize} bytes)`)
     }

@@ -231,6 +231,7 @@ Proveedores personalizados: la `apiKeyEnv`/`apiKeyFile` que definas.
 | `maxTokens` | `2048` | `max_tokens` de la respuesta (mín. 64). |
 | `maxImagesPerMessage` | `10` | Máx. imágenes analizadas por mensaje; el resto se marca como omitidas (mín. 1). |
 | `maxImageBytes` | `15728640` (15 MiB) | Máx. bytes decodificados por imagen; por encima se omite con aviso (mín. 1024). |
+| `maxResizeWidth` | `2000` | Máx. ancho (px) que se envía al proveedor; las capturas PNG/JPEG más anchas se **reducen antes** de analizar (baja muchísimo latencia/coste). `0` desactiva el redimensionado. |
 | `skipModels` | `[]` | IDs de modelo que nunca se procesan (ya ven imágenes). |
 | `alwaysProcessModels` | `[]` | IDs de modelo que siempre se procesan, aunque el catálogo diga que ven imágenes. |
 | `processUnknownModels` | `true` | Si el modelo no aparece en el catálogo, se procesa igualmente. |
@@ -252,6 +253,10 @@ Proveedores personalizados: la `apiKeyEnv`/`apiKeyFile` que definas.
    <análisis estructurado>
    [/IMAGE 1 ANALYSIS]
    ```
+4. **Auto-redimensionado**: las imágenes PNG/JPEG más anchas que
+   `maxResizeWidth` (2000 px por defecto) se reducen antes de enviarlas —
+   una captura a pantalla completa baja de minutos a segundos de análisis con
+   calidad suficiente para leer texto/UI. Los demás formatos pasan intactos.
 4. **Se conserva el texto original** del usuario: solo se reemplazan las
    partes `media`, nunca las partes de texto.
 5. **Múltiples imágenes**: se numeran en orden de aparición y cada una genera
@@ -299,7 +304,7 @@ razonar sobre la imagen.
 ## Pruebas
 
 ```sh
-npm test          # Vitest: 37 casos
+npm test          # Vitest: 45 casos
 npm run typecheck # tsc --noEmit
 ```
 
@@ -311,6 +316,8 @@ Los casos cubren:
 - **D)** error del proveedor → no rompe nada, se inserta aviso
 - **providers**: resolución de proveedores (gemini/openai/personalizados),
   `baseUrl`→endpoint, overrides y fallback con warning
+- **resize**: redimensionado PNG/JPEG (tamaños, aspect ratio, passthrough de
+  formatos sin decodificador y de imágenes pequeñas, integración en relay)
 - además: límites de tamaño/cantidad, parseo de respuestas OpenAI-compatible,
   normalización de data URIs y sustituciones por aviso.
 

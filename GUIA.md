@@ -224,7 +224,7 @@ Tienes que ver **`opencode.vision-relay`** en la lista de plugins.
 ## Comandos útiles
 
 ```sh
-npm test                # dentro de la carpeta del plugin: ejecuta los 37 tests
+npm test                # dentro de la carpeta del plugin: ejecuta los 45 tests
 npm run typecheck       # dentro de la carpeta del plugin: comprobación de tipos
 ```
 
