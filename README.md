@@ -280,7 +280,13 @@ El plugin nunca imprime las claves en logs.
 ## Cómo se comporta
 
 1. **Solo actúa con imágenes**: sin `media` parts de tipo `image/*` no se llama al proveedor.
-2. **No interviene con modelos con visión**: si el modelo activo soporta `image`/`media` en sus capacidades, las imágenes pasan sin tocarlas.
+2. **No interviene con modelos con visión**: la detección usa el **catálogo
+   completo de modelos** de tu opencode2 (`model.list()`) — o sea, **cualquier
+   provider que conectes** y declare `image`/`media` en sus `capabilities.input`
+   se respeta automáticamente: las imágenes pasan sin tocarlas. Los modelos sin
+   capacidades declaradas (o desconocidos) se procesan igualmente
+   (`processUnknownModels`, default `true`), con `skipModels` como override
+   manual.
 3. **Modelos text-only**: cada imagen se analiza (una llamada por imagen) y se reemplaza *in situ* por un bloque de texto:
    ```
    [IMAGE 1 ANALYSIS]
