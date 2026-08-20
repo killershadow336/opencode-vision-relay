@@ -9,8 +9,9 @@ import type {
   LanguageModelV3StreamResult,
   LanguageModelV3TextPart,
 } from "@ai-sdk/provider"
-import { streamImage, type FetchLike } from "./gemini.js"
+import { streamImage, type FetchLike } from "./openai.js"
 import { isImageMime, byteSizeOf, uint8ToBase64 } from "./images.js"
+import { transportOptions, type ProviderSpec } from "./providers.js"
 import type { VisionRelayOptions } from "./options.js"
 import { buildAnalysisPart } from "./relay.js"
 
@@ -44,6 +45,8 @@ type V3Message = LanguageModelV3Prompt[number]
 
 export interface LangDeps {
   readonly options: VisionRelayOptions
+  /** Resolved active provider (endpoint, model, key locations, prompts). */
+  readonly spec: ProviderSpec
   /** Should the relay intervene for this model (text-only, not in skipModels)? */
   readonly shouldProcess: boolean
   readonly resolveApiKey: () => Promise<string | undefined>
@@ -133,7 +136,7 @@ function textOf(part: { type: string; text?: string }): string {
 }
 
 /**
- * Analyzes every image with Gemini (streaming) while yielding the analysis as
+ * Analyzes every image with the vision provider (streaming) while yielding the analysis as
  * `reasoning-*` stream parts so the TUI shows it live; accumulates the final
  * text in `analyses` (aligned indexes with `images`).
  */
@@ -164,7 +167,7 @@ async function* relayStream(
     analyzed++
 
     if (apiKey === undefined) {
-      const body = `ERROR: La variable ${deps.options.apiKeyEnv} (o el archivo vision-relay.key) no está definida, así que esta imagen no se pudo analizar con Gemini.`
+      const body = `ERROR: La variable ${deps.spec.apiKeyEnv} (o el archivo ${deps.spec.apiKeyFile}) no está definida, así que esta imagen no se pudo analizar con el proveedor de visión.`
       analyses[i] = body
       yield { type: "reasoning-delta", id: reasoningId, delta: textOf(buildAnalysisPart(index, body)) }
       continue
@@ -180,14 +183,14 @@ async function* relayStream(
 
     let body = ""
     try {
-      const gemini = { ...deps.options, apiKey }
-      for await (const delta of streamImage(gemini, image.dataUri, deps.fetchImpl)) {
+      const transport = transportOptions(deps.spec, apiKey, deps.options)
+      for await (const delta of streamImage(transport, image.dataUri, deps.fetchImpl)) {
         body += delta
         yield { type: "reasoning-delta", id: reasoningId, delta }
       }
-      if (body.trim() === "") body = "ERROR: Gemini devolvió una respuesta vacía para esta imagen."
+      if (body.trim() === "") body = "ERROR: El proveedor de visión devolvió una respuesta vacía para esta imagen."
     } catch (error) {
-      body = `ERROR: No se pudo analizar esta imagen con Gemini (${errorMessage(error).slice(0, 300)}).`
+      body = `ERROR: No se pudo analizar esta imagen con el proveedor de visión (${errorMessage(error).slice(0, 300)}).`
     }
     analyses[i] = body
     const key = cacheKeyOf(deps, image.dataUri)
@@ -216,7 +219,7 @@ async function* bidi(
 /**
  * Wraps a LanguageModelV3 (AI SDK path — covers aisdk providers like
  * opencode/deepseek). While streaming, every image in the prompt is analyzed
- * by Gemini with the analysis emitted live as reasoning deltas; the actual
+ * by the vision provider with the analysis emitted live as reasoning deltas; the actual
  * model request is sent afterwards with the images replaced by the analysis
  * text, so a text-only model never receives raw image bytes.
  */
@@ -245,7 +248,7 @@ export function buildWrappedLanguage(original: LanguageModelV3, deps: LangDeps):
       }
       analyzed++
       if (apiKey === undefined) {
-        analyses[i] = `ERROR: La variable ${deps.options.apiKeyEnv} (o el archivo vision-relay.key) no está definida, así que esta imagen no se pudo analizar con Gemini.`
+        analyses[i] = `ERROR: La variable ${deps.spec.apiKeyEnv} (o el archivo ${deps.spec.apiKeyFile}) no está definida, así que esta imagen no se pudo analizar con el proveedor de visión.`
         continue
       }
       const cached = cachedOf(deps, image.dataUri)
@@ -256,13 +259,13 @@ export function buildWrappedLanguage(original: LanguageModelV3, deps: LangDeps):
       }
       let body = ""
       try {
-        const gemini = { ...deps.options, apiKey }
-        for await (const delta of streamImage(gemini, image.dataUri, deps.fetchImpl)) {
+        const transport = transportOptions(deps.spec, apiKey, deps.options)
+        for await (const delta of streamImage(transport, image.dataUri, deps.fetchImpl)) {
           body += delta
         }
-        if (body.trim() === "") body = "ERROR: Gemini devolvió una respuesta vacía para esta imagen."
+        if (body.trim() === "") body = "ERROR: El proveedor de visión devolvió una respuesta vacía para esta imagen."
       } catch (error) {
-        body = `ERROR: No se pudo analizar esta imagen con Gemini (${errorMessage(error).slice(0, 300)}).`
+        body = `ERROR: No se pudo analizar esta imagen con el proveedor de visión (${errorMessage(error).slice(0, 300)}).`
       }
       analyses[i] = body
       const key = cacheKeyOf(deps, image.dataUri)

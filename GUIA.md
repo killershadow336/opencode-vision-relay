@@ -2,8 +2,11 @@
 
 > Plugin: `opencode.vision-relay` · OpenCode V2 (`opencode2`)
 
-Objetivo: adjuntas una imagen, Gemini la describe y DeepSeek (o cualquier
-modelo text-only) puede "verla". **No hay proxy ni modificaciones a OpenCode.**
+Objetivo: adjuntas una imagen, el proveedor de visión la describe y DeepSeek (o
+cualquier modelo text-only) puede "verla". **No hay proxy ni modificaciones a
+OpenCode.** Esta guía usa **Gemini** (el proveedor por defecto); para OpenAI,
+Groq, Ollama u otros mira la sección
+[Elegir proveedor](README.md#elegir-proveedor-provider) del README.
 
 ---
 
@@ -125,6 +128,40 @@ Añade la clave `plugins` a tu configuración de OpenCode V2.
 
 ---
 
+## ¿Y si quiero usar otro proveedor de visión? (OpenAI, Groq, Ollama…)
+
+Gemini es solo el **valor por defecto**. El plugin soporta cualquier API
+compatible con OpenAI (OpenAI, Groq, OpenRouter, Ollama, LM Studio…) mediante
+la opción `provider` y el mapa `providers`:
+
+```jsonc
+{
+  "plugins": [
+    {
+      "package": "/mnt/c/Users/killer/Desktop/opencode-vision-relay/index.ts",
+      "options": {
+        "provider": "groq",
+        "providers": {
+          "groq": {
+            "type": "openai",
+            "baseUrl": "https://api.groq.com/openai",
+            "model": "llama-3.2-90b-vision-preview",
+            "apiKeyEnv": "GROQ_API_KEY"
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+La key se lee igual que con Gemini: variable de entorno (p. ej.
+`GROQ_API_KEY`) o archivo de respaldo (`~/.config/opencode/openai.key` para
+`type: "openai"`, o el `apiKeyFile` que tú definas). Ejemplos GPT, Ollama y
+OpenRouter en [README.md](README.md#elegir-proveedor-provider).
+
+---
+
 ## Paso 5 · Reinicia y comprueba
 
 ```sh
@@ -187,8 +224,8 @@ Tienes que ver **`opencode.vision-relay`** en la lista de plugins.
 ## Comandos útiles
 
 ```sh
-npm test                # dentro de plugin/: ejecuta los 14 tests
-npm run typecheck       # dentro de plugin/: comprobación de tipos
+npm test                # dentro de la carpeta del plugin: ejecuta los 37 tests
+npm run typecheck       # dentro de la carpeta del plugin: comprobación de tipos
 ```
 
 Toda la referencia (opciones, formatos, límites, arquitectura) está en

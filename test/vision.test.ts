@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import type { ContentPart } from "@opencode-ai/ai"
-import { analyzeImage, type FetchLike } from "../gemini.js"
+import { analyzeImage, type FetchLike } from "../openai.js"
 import { byteSizeOf, toDataUri } from "../images.js"
 import { resolveOptions } from "../options.js"
 import { buildAnalysisPart, relayImages, replaceMediaWithNotice } from "../relay.js"
@@ -172,7 +172,7 @@ describe("helpers", () => {
   })
 })
 
-describe("gemini.ts — cliente OpenAI-compatible", () => {
+describe("openai.ts — cliente OpenAI-compatible", () => {
   it("parsea respuestas con content en string", async () => {
     const fetchImpl = vi.fn<FetchLike>(async () =>
       new Response(JSON.stringify({ choices: [{ message: { content: "Texto visible: X" } }] }), {
@@ -209,14 +209,55 @@ describe("gemini.ts — cliente OpenAI-compatible", () => {
     ).resolves.toBe("ab")
   })
 
-  it("lanza ante un HTTP de error", async () => {
-    const fetchImpl = vi.fn<FetchLike>(async () => new Response("rate limit", { status: 429 }))
+  it("lanza ante un HTTP de error (no reintenta 401)", async () => {
+    const fetchImpl = vi.fn<FetchLike>(async () => new Response("bad key", { status: 401 }))
     await expect(
       analyzeImage(
-        { model: "gemini-3.6-flash", endpoint: "https://example.com", apiKey: "k", timeoutMs: 1000, maxTokens: 2048, visionPrompt: "p" },
+        { model: "gemini-3.6-flash", endpoint: "https://example.com", apiKey: "k", timeoutMs: 1000, maxTokens: 2048, visionPrompt: "p", maxRetries: 2, retryDelayMs: 5 },
         "data:image/png;base64,abc",
         fetchImpl,
       ),
-    ).rejects.toThrow(/Gemini HTTP 429/)
+    ).rejects.toThrow(/Vision provider HTTP 401/)
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+  })
+
+  it("lanza ante un HTTP 429 agotando reintentos rápidos", async () => {
+    const fetchImpl = vi.fn<FetchLike>(async () => new Response("rate limit", { status: 429 }))
+    await expect(
+      analyzeImage(
+        { model: "gemini-3.6-flash", endpoint: "https://example.com", apiKey: "k", timeoutMs: 1000, maxTokens: 2048, visionPrompt: "p", maxRetries: 0, retryDelayMs: 5 },
+        "data:image/png;base64,abc",
+        fetchImpl,
+      ),
+    ).rejects.toThrow(/Vision provider HTTP 429 after 1 attempt/)
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+  })
+
+  it("reintenta un 503 transitorio y tiene éxito en el segundo intento", async () => {
+    const fetchImpl = vi
+      .fn<FetchLike>()
+      .mockResolvedValueOnce(new Response("high demand", { status: 503 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ choices: [{ message: { content: "ok tras retry" } }] }), { status: 200 }),
+      )
+    const result = await analyzeImage(
+      { model: "gemini-3.6-flash", endpoint: "https://example.com", apiKey: "k", timeoutMs: 1000, maxTokens: 2048, visionPrompt: "p", maxRetries: 2, retryDelayMs: 5 },
+      "data:image/png;base64,abc",
+      fetchImpl,
+    )
+    expect(result).toBe("ok tras retry")
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+  })
+
+  it("agota los reintentos de un 503 y lanza 'after 3 attempts'", async () => {
+    const fetchImpl = vi.fn<FetchLike>(async () => new Response("high demand", { status: 503 }))
+    await expect(
+      analyzeImage(
+        { model: "gemini-3.6-flash", endpoint: "https://example.com", apiKey: "k", timeoutMs: 1000, maxTokens: 2048, visionPrompt: "p", maxRetries: 2, retryDelayMs: 5 },
+        "data:image/png;base64,abc",
+        fetchImpl,
+      ),
+    ).rejects.toThrow(/Vision provider HTTP 503 after 3 attempts/)
+    expect(fetchImpl).toHaveBeenCalledTimes(3)
   })
 })

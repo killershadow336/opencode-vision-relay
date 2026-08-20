@@ -2,10 +2,12 @@ import { Plugin } from "@opencode-ai/plugin"
 import type { ContentPart } from "@opencode-ai/ai"
 import type { Model } from "@opencode-ai/schema/model"
 import { readFile } from "node:fs/promises"
-import { analyzeImage } from "./gemini.js"
+import { appendFileSync } from "node:fs"
+import { analyzeImage } from "./openai.js"
 import { isImageMime } from "./images.js"
 import { buildWrappedLanguage } from "./live.js"
 import { resolveOptions, type VisionRelayOptions } from "./options.js"
+import { providerLabel, resolveProvider, transportOptions, type ProviderSpec } from "./providers.js"
 import { relayImages, replaceMediaWithNotice } from "./relay.js"
 
 interface RelayState {
@@ -28,17 +30,17 @@ function supportsVision(input: ReadonlySet<string>): boolean {
 }
 
 /**
- * Resolves the Gemini API key at dispatch time. Order: env var (default
- * GOOGLE_AI_STUDIO_API_KEY) → fallback file (default
+ * Resolves the active provider's API key at dispatch time. Order: env var
+ * (e.g. GOOGLE_AI_STUDIO_API_KEY) → fallback file (e.g.
  * ~/.config/opencode/vision-relay.key). Reading the file fresh on each dispatch
  * makes the plugin resilient to service restarts, regardless of which process
  * spawned the service and what environment it inherited.
  */
-async function resolveApiKey(options: VisionRelayOptions): Promise<string | undefined> {
-  const fromEnv = process.env[options.apiKeyEnv]
+async function resolveApiKey(spec: ProviderSpec): Promise<string | undefined> {
+  const fromEnv = process.env[spec.apiKeyEnv]
   if (fromEnv !== undefined && fromEnv !== "") return fromEnv
   try {
-    const fromFile = (await readFile(options.apiKeyFile, "utf8")).trim()
+    const fromFile = (await readFile(spec.apiKeyFile, "utf8")).trim()
     return fromFile === "" ? undefined : fromFile
   } catch {
     return undefined
@@ -48,11 +50,32 @@ async function resolveApiKey(options: VisionRelayOptions): Promise<string | unde
 export default Plugin.define({
   id: "opencode.vision-relay",
   setup: async (ctx) => {
+    // Absolute trace path: the service process runs with stdout→/dev/null, and
+    // plugin options have been observed not always reaching resolveOptions at
+    // runtime (bun module cache). A fixed path keeps the trace observable.
+    const TRACE_PATH = "/home/killershadow/.config/opencode/vision-relay.trace.log"
+    const trace = (level: string, message: string): void => {
+      try {
+        appendFileSync(TRACE_PATH, `${new Date().toISOString()} [${level}] ${message}\n`)
+      } catch {
+        /* best-effort */
+      }
+    }
+
     const options = resolveOptions(ctx.options, process.env)
     const log = (level: "debug" | "error", message: string): void => {
       if (level === "error") console.warn(`[vision-relay] ${message}`)
       else if (options.debug) console.log(`[vision-relay] ${message}`)
+      if (options.debug) trace(level, message)
     }
+
+    // Active provider spec: "gemini" (default), "openai", or a named custom
+    // provider from options.providers. Unknown names fall back to gemini.
+    const spec = resolveProvider(options, process.env, { log })
+
+    trace("info", `[boot] enabled=${options.enabled} debug=${options.debug}`)
+    trace("info", `[boot] provider=${spec.type} model=${spec.model} endpoint=${spec.endpoint}`)
+    trace("info", `[boot] raw options: ${JSON.stringify(ctx.options)}`)
 
     if (!options.enabled) {
       log("debug", "disabled via options.enabled=false")
@@ -140,23 +163,32 @@ export default Plugin.define({
           return
         }
 
-        // AI SDK-routed models are handled by the aisdk.language wrapper, which
-        // streams the analysis live into the reasoning panel. Skip them here so
-        // the image file parts survive until the model dispatch.
+        // IMPORTANTE: no se puede delegar el relay al wrapper aisdk.language,
+        // aunque el provider sea aisdk-routed. opencode valida las capacidades
+        // del modelo ANTES de llegar al pump aisdk: para un modelo text-only
+        // descarta los file-parts con "this model does not support image input"
+        // y el wrapper jamás llega a ejecutarse. El hook context es la única
+        // intercepción que ocurre antes de esa validación, así que relay aquí
+        // SIEMPRE. El wrapper aisdk queda como capa defensiva: si alguna versión
+        // futura sí enruta file-parts al pump, aquí ya reemplazamos los media
+        // parts → el prompt convertido a v3 no tendrá file-parts → sin doble
+        // análisis. (Solo se mantiene un log diagnóstico.)
         if (aisdkProviders.has(event.model.providerID)) {
-          log("debug", `model ${event.model.providerID}/${event.model.id} is aisdk-routed; live relay via aisdk.language`)
-          return
+          log(
+            "debug",
+            `model ${event.model.providerID}/${event.model.id} is aisdk-routed; relaying in context hook (opencode rejects images before the aisdk layer)`,
+          )
         }
 
-        const apiKey = await resolveApiKey(options)
+        const apiKey = await resolveApiKey(spec)
         if (apiKey === undefined) {
           log(
             "error",
-            `images present but ${options.apiKeyEnv} is not set (nor ${options.apiKeyFile}) — replacing images with a notice`,
+            `images present but ${spec.apiKeyEnv} is not set (nor ${spec.apiKeyFile}) — replacing images with a notice`,
           )
           replaceMediaWithNotice(
             messages,
-            `Vision relay: la variable de entorno ${options.apiKeyEnv} no está definida ni existe el archivo ${options.apiKeyFile}, así que esta imagen no se pudo analizar con Gemini.`,
+            `Vision relay: la variable de entorno ${spec.apiKeyEnv} no está definida ni existe el archivo ${spec.apiKeyFile}, así que esta imagen no se pudo analizar con ${providerLabel(spec)}.`,
           )
           return
         }
@@ -166,7 +198,7 @@ export default Plugin.define({
           sessionID: event.sessionID,
           cache: state.cache,
           cacheSet,
-          analyze: async (dataUri) => analyzeImage({ ...options, apiKey }, dataUri),
+          analyze: async (dataUri) => analyzeImage(transportOptions(spec, apiKey, options), dataUri),
           log,
         })
 
@@ -179,10 +211,12 @@ export default Plugin.define({
       }
     })
 
-    // Wraps AISDK language models (provider package `aisdk:...`) that are
-    // text-only, so image analysis streams live into the TUI reasoning panel
-    // while Gemini works, and the 60s (now 190s) dispatch timeout never aborts
-    // a large-image analysis.
+    // Defensive layer: wraps AISDK language models (provider package
+    // `aisdk:...`) in case a future opencode version routes image file-parts to
+    // the aisdk pump (today it rejects them before dispatch for text-only
+    // models, so the context hook above is the real path). If it ever fires,
+    // the analysis streams live into the TUI reasoning panel while the vision
+    // provider works, and the 190s dispatch timeout never aborts a large-image analysis.
     const aisdkRegistration = await ctx.aisdk.hook("language", (input) => {
       try {
         if (input.language === undefined) return
@@ -192,8 +226,9 @@ export default Plugin.define({
         }
         input.language = buildWrappedLanguage(input.language, {
           options,
+          spec,
           shouldProcess: true,
-          resolveApiKey: () => resolveApiKey(options),
+          resolveApiKey: () => resolveApiKey(spec),
           cache: state.cache,
           cacheSet,
           cacheNamespace: `aisdk:${input.model.providerID}/${input.model.modelID}`,

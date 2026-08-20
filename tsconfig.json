@@ -13,5 +13,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["index.ts", "options.ts", "images.ts", "gemini.ts", "relay.ts", "test"]
+  "include": ["index.ts", "options.ts", "images.ts", "openai.ts", "providers.ts", "relay.ts", "live.ts", "test"]
 }

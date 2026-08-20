@@ -4,9 +4,10 @@ import type {
   LanguageModelV3Prompt,
   LanguageModelV3StreamPart,
 } from "@ai-sdk/provider"
-import type { FetchLike } from "../gemini.js"
+import type { FetchLike } from "../openai.js"
 import { buildWrappedLanguage, collectFileImages, sanitizePrompt } from "../live.js"
 import { resolveOptions } from "../options.js"
+import { resolveProvider, type ProviderSpec } from "../providers.js"
 
 const PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
 
@@ -15,18 +16,21 @@ const options = resolveOptions(
   { TEST_GEMINI_KEY: "sk-test" },
 )
 
+const spec: ProviderSpec = resolveProvider(options, { TEST_GEMINI_KEY: "sk-test" })
+
 const resolveApiKey = async (): Promise<string | undefined> => "sk-test"
 const noopLog = (): void => {}
 
 interface Deps {
   options: typeof options
+  spec: ProviderSpec
   shouldProcess: boolean
   resolveApiKey: () => Promise<string | undefined>
   log: (level: "debug" | "error", message: string) => void
   fetchImpl?: FetchLike
 }
 
-const deps: Deps = { options, shouldProcess: true, resolveApiKey, log: noopLog }
+const deps: Deps = { options, spec, shouldProcess: true, resolveApiKey, log: noopLog }
 
 const setFetch = (fetchImpl: FetchLike): void => {
   deps.fetchImpl = fetchImpl

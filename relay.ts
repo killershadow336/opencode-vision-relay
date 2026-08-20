@@ -54,11 +54,11 @@ export function buildAnalysisPart(index: number, body: string, description?: str
 }
 
 export function buildErrorPart(index: number, error: unknown): ContentPart {
-  const text = `[IMAGE ${index} ANALYSIS]\nERROR: No se pudo analizar esta imagen con Gemini (${truncate(errorMessage(error), 300)}). El modelo principal no puede ver esta imagen.\n[/IMAGE ${index} ANALYSIS]`
+  const text = `[IMAGE ${index} ANALYSIS]\nERROR: No se pudo analizar esta imagen con el proveedor de visión (${truncate(errorMessage(error), 300)}). El modelo principal no puede ver esta imagen.\n[/IMAGE ${index} ANALYSIS]`
   return { type: "text", text }
 }
 
-/** Replaces every image media part with a plain-text notice. Used when Gemini is unavailable. */
+/** Replaces every image media part with a plain-text notice. Used when the vision provider is unavailable. */
 export function replaceMediaWithNotice(messages: { content: ContentPart[] }[], notice: string): number {
   let replaced = 0
   for (const message of messages) {
@@ -72,10 +72,10 @@ export function replaceMediaWithNotice(messages: { content: ContentPart[] }[], n
 }
 
 /**
- * Analyzes every image in the given messages with Gemini and replaces each
- * image media part with a structured text analysis block. Never throws: errors
- * become per-image notices so the downstream (possibly text-only) model is
- * never left with a raw image part.
+ * Analyzes every image in the given messages with the active vision provider
+ * and replaces each image media part with a structured text analysis block.
+ * Never throws: errors become per-image notices so the downstream (possibly
+ * text-only) model is never left with a raw image part.
  */
 export async function relayImages(messages: { content: ContentPart[] }[], ctx: RelayContext): Promise<RelayStats> {
   const { options, analyze, log } = ctx

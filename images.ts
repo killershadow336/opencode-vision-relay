@@ -7,7 +7,7 @@ export interface CollectedImage {
   readonly partIndex: number
   /** Reference to the original media part (used to locate the replacement slot). */
   readonly part: MediaPart
-  /** Normalized `data:<mime>;base64,<payload>` data URI ready for Gemini. */
+  /** Normalized `data:<mime>;base64,<payload>` data URI ready for the vision provider. */
   readonly dataUri: string
   /** Approximate decoded size in bytes. */
   readonly byteSize: number

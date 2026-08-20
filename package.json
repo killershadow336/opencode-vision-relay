@@ -1,29 +1,50 @@
 {
   "name": "opencode-vision-relay",
-  "version": "0.1.0",
-  "private": true,
+  "version": "0.2.0",
   "type": "module",
-  "description": "Native OpenCode V2 plugin that gives text-only models vision: relays image parts to Gemini (OpenAI-compatible endpoint) and replaces them with detailed text analyses.",
-  "exports": "./index.ts",
-  "main": "./index.ts",
+  "description": "Native OpenCode V2 plugin that gives text-only models vision: relays image parts to any OpenAI-compatible vision provider (Gemini, OpenAI, Groq, OpenRouter, Ollama...) and replaces them with detailed text analyses.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "files": [
-    "index.ts",
-    "options.ts",
-    "images.ts",
-    "gemini.ts",
-    "relay.ts",
-    "live.ts",
-    "README.md"
+    "dist",
+    "README.md",
+    "GUIA.md",
+    "LICENSE"
   ],
   "scripts": {
+    "clean": "rm -rf dist",
+    "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepack": "npm run clean && npm run build && npm test"
   },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "opencode",
+    "plugin",
+    "vision",
+    "multimodal",
+    "gemini",
+    "openai",
+    "tts",
+    "text-only"
+  ],
+  "license": "MIT",
   "dependencies": {
-    "@opencode-ai/ai": "0.0.0-next-17444",
     "@opencode-ai/plugin": "0.0.0-next-17444"
   },
   "devDependencies": {
+    "@ai-sdk/provider": "3.0.8",
+    "@opencode-ai/ai": "0.0.0-next-17444",
+    "@opencode-ai/schema": "0.0.0-next-17444",
     "@types/node": "^24.0.0",
     "typescript": "^5.8.0",
     "vitest": "^3.0.0"
