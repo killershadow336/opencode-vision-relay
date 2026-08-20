@@ -1,6 +1,6 @@
 {
   "name": "opencode2-vision-relay",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "description": "OpenCode V2 (opencode2) plugin: gives text-only models vision by relaying image parts to any OpenAI-compatible vision provider (Gemini, OpenAI, Groq, OpenRouter, Ollama...) and replacing them with detailed text analyses.",
   "main": "./dist/index.js",
