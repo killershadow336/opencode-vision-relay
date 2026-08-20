@@ -301,15 +301,16 @@ El plugin nunca imprime las claves en logs.
 9. **Errores limpios**: si el proveedor falla, la imagen se sustituye por un aviso `ERROR: …` visible para el modelo; el plugin nunca lanza hacia el dispatcher.
 10. **Seguridad**: la API key solo se lee de `process.env`/archivo; los logs redactan cuerpos de error y jamás incluyen claves.
 
-### Streaming en modelos AI SDK (`aisdk:...`)
+### Cómo se analizan las imágenes (incluye modelos AI SDK)
 
-En modelos text-only enrutados por AI SDK, el
-análisis fluye **en vivo** como `reasoning-*` en el panel de razonamiento
-mientras el proveedor trabaja. Cuando termina, la petición al modelo real se
-envía con los bloques de análisis (el modelo nunca recibe bytes de imagen).
-El `timeoutMs` solo acota el análisis de cada imagen: el stream del modelo final
-no se interrumpe aunque el proveedor tarde más (a lo sumo esa imagen se marca
-con `ERROR: …` y el resto continúa).
+El análisis ocurre en un **hook de contexto, antes** del dispatch del modelo:
+las imágenes se envían al proveedor una a una y, al terminar, la petición al
+modelo sale con los bloques `[IMAGE N ANALYSIS]` — **el modelo nunca recibe
+bytes de imagen**. No hay un *panel de razonamiento* mientras se analiza: la
+espera es muda y depende del proveedor (normalmente segundos por imagen). El
+`timeoutMs` acota el análisis de cada imagen; el stream del modelo final no se
+interrumpe aunque una imagen tarde más (esa imagen se marca `ERROR: …` y el
+resto continúa).
 
 ---
 

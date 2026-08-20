@@ -32,7 +32,9 @@ OpenCode (apuntando a `dist/index.js` o a `index.ts` directamente).
 
 ```
 index.ts      → entrypoint: registra hooks de contexto + aisdk.language
-live.ts       → wrapper de streaming en vivo para modelos text-only AI SDK
+live.ts       → wrapper defensivo de streaming para modelos text-only AI SDK
+                (en opencode actual nunca recibe imágenes; el hook de contexto
+                hace el relay siempre)
 relay.ts      → reemplaza media parts de tipo imagen por análisis de texto (hook context)
 options.ts    → parseo/validación de opciones (resolveOptions)
 providers.ts  → resuelve el proveedor activo (gemini/openai/personalizados) + transportOptions
