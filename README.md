@@ -43,12 +43,12 @@ solo transforma la petición saliente hacia el modelo.
 
 ## Instalación
 
-Hay tres formas: **paquete npm** (cuando esté publicado), **GitHub** o **carpeta local**.
+Hay tres formas: **paquete npm** (publicado, recomendado), **GitHub** o **carpeta local**.
 
 ### Desde npm (recomendado para usuarios)
 
 ```sh
-npm install -g opencode2-vision-relay   # no publicado todavía — usa GitHub/local por ahora
+npm install -g opencode2-vision-relay
 ```
 
 Añade el paquete a tu `opencode.json`:
